@@ -43,10 +43,19 @@ class UDPClient:
         file_crc_from_server = None
         max_seq = -1
 
+        timeout_count = 0
+        max_timeouts = 3
+
         while True:
             try:
                 data, addr = self.sock.recvfrom(65535)
+                timeout_count = 0
             except socket.timeout:
+                timeout_count += 1
+                print("Timeout durante transferência ou servidor interrompido. Abortando requisição.")
+                if timeout_count >= max_timeouts:
+                    print(f"Abortando após {max_timeouts} timeouts consecutivos.")
+                    return False
                 missing = self._missing_segments(segments, total_segments)
                 if missing:
                     self.sock.sendto(pack_nack(missing), self.server)
