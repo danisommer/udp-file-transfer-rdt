@@ -24,6 +24,7 @@ class UDPClient:
         self.drop_map: Dict[int, bool] = {}
         for spec in (drop_specs or []):
             self.drop_map.update(parse_drop_spec(spec))
+        self.already_dropped = set()
 
     def request_file(self, filename: str, out_path: str | None = None, segment_size: int = DEFAULT_SEGMENT_SIZE) -> bool:
         req = pack_get(filename)
@@ -69,7 +70,12 @@ class UDPClient:
                     print(f"Pacote corrompido: {e}")
                     continue
 
-                if self.drop_map.get(seq) or (self.drop_prob > 0 and random.random() < self.drop_prob):
+                if seq in self.drop_map and seq not in self.already_dropped:
+                    print(f"[DROP] Descartando seq {seq}")
+                    self.already_dropped.add(seq)
+                    continue
+
+                if self.drop_prob > 0 and random.random() < self.drop_prob:
                     print(f"[DROP] Descartando seq {seq}")
                     continue
 
