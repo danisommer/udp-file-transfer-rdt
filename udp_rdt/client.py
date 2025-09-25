@@ -19,7 +19,6 @@ class UDPClient:
     def __init__(self, server_host: str, server_port: int, timeout: float = 1.0, drop_specs=None, drop_prob: float = 0.0):
         self.server = (server_host, server_port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.settimeout(timeout)
         self.drop_prob = drop_prob
         self.drop_map: Dict[int, bool] = {}
         for spec in (drop_specs or []):
@@ -28,7 +27,15 @@ class UDPClient:
 
     def request_file(self, filename: str, out_path: str | None = None, segment_size: int = DEFAULT_SEGMENT_SIZE) -> bool:
         req = pack_get(filename)
-        self.sock.sendto(req, self.server)
+        self.sock.settimeout(2)
+        try:
+            self.sock.sendto(req, self.server)
+            data, addr = self.sock.recvfrom(65535)
+        except socket.timeout:
+            print("Servidor indisponível ou não respondeu. Abortando requisição.")
+            return False
+        self.sock.settimeout(5)
+        t = data[0]
 
         segments: Dict[int, bytes] = {}
         total_size = None
