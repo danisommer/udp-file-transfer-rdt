@@ -16,8 +16,9 @@ import zlib
 
 
 class UDPClient:
-    def __init__(self, server_host: str, server_port: int, timeout: float = 1.0, drop_specs=None, drop_prob: float = 0.0):
+    def __init__(self, server_host: str, server_port: int, timeout: float = 5.0, drop_specs=None, drop_prob: float = 0.0):
         self.server = (server_host, server_port)
+        self.timeout = timeout
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.drop_prob = drop_prob
         self.drop_map: Dict[int, bool] = {}
@@ -28,20 +29,14 @@ class UDPClient:
     def request_file(self, filename: str, out_path: str | None = None, segment_size: int = DEFAULT_SEGMENT_SIZE) -> bool:
         req = pack_get(filename)
         self.sock.settimeout(2)
-        try:
-            self.sock.sendto(req, self.server)
-            data, addr = self.sock.recvfrom(65535)
-        except socket.timeout:
-            print("Servidor indisponível ou não respondeu. Abortando requisição.")
-            return False
-        self.sock.settimeout(5)
-        t = data[0]
+        self.sock.sendto(req, self.server)
 
         segments: Dict[int, bytes] = {}
         total_size = None
         total_segments = None
         file_crc_from_server = None
         max_seq = -1
+        server_answered = False
 
         timeout_count = 0
         max_timeouts = 3
@@ -51,8 +46,11 @@ class UDPClient:
                 data, addr = self.sock.recvfrom(65535)
                 timeout_count = 0
             except socket.timeout:
+                if not server_answered:
+                    print("Servidor indisponível ou não respondeu. Abortando requisição.")
+                    return False
                 timeout_count += 1
-                print("Timeout durante transferência ou servidor interrompido. Abortando requisição.")
+                print(f"Timeout durante a transferência ({timeout_count}/{max_timeouts}).")
                 if timeout_count >= max_timeouts:
                     print(f"Abortando após {max_timeouts} timeouts consecutivos.")
                     return False
@@ -69,6 +67,9 @@ class UDPClient:
                         continue
                     print("Timeout sem progresso; abortando.")
                     return False
+            if not server_answered:
+                server_answered = True
+                self.sock.settimeout(self.timeout)
             t = data[0]
 
             if t == T_ERR:
@@ -175,7 +176,7 @@ def main():
     ap.add_argument("--server", required=True, help="ip:porta do servidor")
     ap.add_argument("--file", required=True, help="nome do arquivo no servidor")
     ap.add_argument("--out", help="caminho do arquivo de saída")
-    ap.add_argument("--timeout", type=float, default=1.0)
+    ap.add_argument("--timeout", type=float, default=5.0, help="segundos sem pacotes antes de pedir retransmissão")
     ap.add_argument("--drop", action='append', help="simular perda: seq:lista,ex 1,5-9")
     ap.add_argument("--drop-prob", type=float, default=0.0)
     args = ap.parse_args()
