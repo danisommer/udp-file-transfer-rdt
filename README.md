@@ -1,6 +1,12 @@
 # Transferência confiável de arquivos sobre UDP
 
-Cliente e servidor em Python que transferem arquivos sobre UDP com a confiabilidade implementada na aplicação: segmentação, CRC32 por segmento, retransmissão seletiva por NACK e CRC32 do arquivo inteiro. O cliente simula perda de pacotes para mostrar a recuperação funcionando. Só biblioteca padrão.
+Cliente e servidor em Python que transferem arquivos sobre UDP com a confiabilidade implementada na aplicação: segmentação, CRC32 por segmento, retransmissão seletiva por NACK e CRC32 do arquivo inteiro.
+
+![Servidor e cliente da transferência sobre UDP: segmentos descartados de propósito, NACK pedindo os que faltam e o arquivo de 12 MB salvo](docs/demo/udp-transfer-demo.gif)
+
+Execução real do servidor e do cliente, com perda simulada e recuperação por NACK. Vídeo completo: https://danisommer.github.io/videos/udp-transfer-demo.mp4
+
+O cliente simula perda de pacotes para mostrar a recuperação funcionando. Só biblioteca padrão.
 
 ## Como rodar
 
